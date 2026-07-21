@@ -1,0 +1,10 @@
+name = "tablero-kyl"
+main = "worker.js"
+compatibility_date = "2026-07-18"
+
+[assets]
+directory = "./public"
+
+[[kv_namespaces]]
+binding = "KYL_DATA"
+id = "1fbb9366033e4a1385eaa2dc922e2f88"
