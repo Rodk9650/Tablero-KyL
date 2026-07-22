@@ -180,7 +180,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
 .tbl .muted{color:#8A929C;font-size:12px}
 .tbl .mono{font-family:'Space Grotesk',monospace;font-weight:600;letter-spacing:.3px}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:middle}
-.tbl-scroll{overflow-x:auto}
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
 .tbl.rank .rk{color:#9AA2AB;font-weight:600;width:30px}
 .tbl.rank tr:nth-child(1) .rk{color:#E8820C}
@@ -356,6 +356,16 @@ tr.hiddenrow .tag{background:#F0DBD3;color:#A6502E}
   .navbtn{font-size:12px;padding:6px 9px}
   table.tbl{font-size:12.5px}
   .content{padding:12px}
+  .tbl th,.tbl td{padding:7px 8px}
+  .filterbar{gap:10px}
+  .filter{flex:1 1 130px}
+  .filter select{min-width:0;width:100%;max-width:100%}
+}
+@media(max-width:420px){
+  table.tbl{font-size:11px}
+  .tbl th,.tbl td{padding:6px 6px}
+  .filterbar{flex-direction:column;align-items:stretch}
+  .filter{flex:1 1 auto}
 }
 `,SI=Vpe;window.storage={get:async e=>{try{let t=localStorage.getItem(e);return t!=null?{value:t}:null}catch{return null}},set:async(e,t)=>{try{localStorage.setItem(e,t)}catch{}return{value:t}}};(0,bI.createRoot)(document.getElementById("root")).render(wI.default.createElement(SI));})();
 /*! Bundled license information:
