@@ -27,6 +27,53 @@ function normalizarPedido(pedido) {
   return texto.toUpperCase();
 }
 
+// === Comisión del conductor por viaje ===
+// Réplica exacta de la fórmula del Tablero de Comisiones (función cp() de esa
+// app): premia el rendimiento de combustible del viaje. Si no hay un % manual
+// fijado para el conductor, se busca el tramo según los km/L reales de ese viaje.
+const TRAMOS_COMISION = [
+  { min: 2.6, pct: 6 },
+  { min: 2.5, pct: 5 },
+  { min: 2.4, pct: 4 },
+  { min: 2.35, pct: 3 },
+  { min: 2.2, pct: 2 },
+];
+
+function tramoPorRendimiento(rendimiento) {
+  if (rendimiento == null || isNaN(rendimiento)) return null;
+  for (const tramo of TRAMOS_COMISION) {
+    if (rendimiento >= tramo.min) return tramo.pct;
+  }
+  return null; // rendimiento por debajo de 2.2 km/L: sin tramo definido ("falta %")
+}
+
+function calcularComision(t) {
+  const kmIni = parseFloat(t.kmInicial);
+  const kmFin = parseFloat(t.kmFinal);
+  const litros = parseFloat(t.litros);
+  const kmRec = !isNaN(kmIni) && !isNaN(kmFin) ? kmFin - kmIni : null;
+  const rendimiento = kmRec != null && !isNaN(litros) && litros > 0 ? kmRec / litros : null;
+  const pctAuto = tramoPorRendimiento(rendimiento);
+  const pctManualTxt = t.pctManual;
+  const pctManual = pctManualTxt === "" || pctManualTxt == null ? null : parseFloat(pctManualTxt);
+  const pct = pctManual != null && !isNaN(pctManual) ? pctManual : pctAuto;
+  const toneladas = parseFloat(t.toneladas) || 0;
+  const precioTon = parseFloat(t.precioTon) || 0;
+  const neto = precioTon * toneladas;
+  const splitPctTxt = t.splitPct;
+  const splitPctRaw = splitPctTxt === "" || splitPctTxt == null ? 100 : parseFloat(splitPctTxt);
+  const splitPct = isNaN(splitPctRaw) ? 100 : Math.min(100, Math.max(0, splitPctRaw));
+  const comision = pct != null ? neto * (pct / 100) * (splitPct / 100) : null;
+  return { rendimiento, pct, comision };
+}
+
+// Sobreestadía: días de sobreestadía × valor día configurado (config.viaticoDia).
+// Se suma a "otros gastos" del viaje junto con lo ya reportado en rendiciones/extras.
+function calcularSobreestadia(t, viaticoDia) {
+  const sobreDias = parseFloat(t.sobreDias) || 0;
+  return sobreDias * (viaticoDia || 0);
+}
+
 // Suma viáticos + peajes + reembolsos + cualquier otro gasto reportado
 // (tablero de comisiones guarda todo como líneas de "rendiciones"/"extras"
 // sueltas, sin categorías separadas — así que se suman todas como
@@ -125,12 +172,16 @@ export default {
           const data = typeof raw === "string" ? JSON.parse(raw) : raw;
           const trips = (data && data.trips) || [];
           const gastosPorPedido = calcularGastosPorPedido(data || {});
+          const viaticoDia = (data && data.config && Number(data.config.viaticoDia)) || 0;
 
           // Solo los viajes que ya tienen litros cargados (dato real de costo)
           const conCosto = trips
             .filter((t) => t.litros !== "" && t.litros != null && !isNaN(Number(t.litros)) && Number(t.litros) > 0)
             .map((t) => {
               const ref = extraerReferencia(t.observacion);
+              const { comision } = calcularComision(t);
+              const sobreestadia = calcularSobreestadia(t, viaticoDia);
+              const gastosRendidos = ref && gastosPorPedido[ref] != null ? gastosPorPedido[ref] : 0;
               return {
                 guia: t.guia || "",
                 ref,
@@ -138,7 +189,8 @@ export default {
                 litros: Number(t.litros) || 0,
                 rendido: !!t.rendido,
                 liquidado: t.liquidado || null,
-                gastosOtros: ref && gastosPorPedido[ref] != null ? gastosPorPedido[ref] : 0,
+                gastosOtros: gastosRendidos + sobreestadia,
+                comisionConductor: comision,
               };
             });
           return new Response(JSON.stringify(conCosto), {
